@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi配网</title>
+ 
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: rgb(73, 182, 241);
+        }
+        
+        form {
+            width: 400px;
+            height: 200px;
+            background-color: white;
+            padding: 5px;
+            box-sizing: border-box;
+            position: absolute;
+            left: 50%;
+            top: 1%;
+            /* 水平居中 */
+            transform: translateX(-50%);
+            /* transform: translate(-50%, -50%); */
+            /* 相对于现在所处位置的位移变化，x便偏移自己宽度的50%，y偏移自己高度的50% */
+        }
+ 
+        h2 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        form input {
+            width: 100%;
+            height: 30px;
+            display: block;
+            margin-bottom: 8px;
+            padding-left: 10px;
+            box-sizing: border-box;
+        }
+        .mya {
+            width: 100%;
+            height: 30px;
+            margin-bottom: 20x;
+        }
+        
+        .mya a:nth-child(1) {
+            float: left;
+        }
+        
+        .mya a:nth-child(2) {
+            float: right;
+        }
+        
+        button {
+            width: 100%;
+            height: 35px;
+            background-color: rgb(13, 255, 0);
+            border: none;
+        }
+        
+        button:active {
+            box-shadow: 0 0 3px rgb(6, 162, 47);
+            /* x偏移  y偏移  模糊值 颜色 */
+        }
+    </style>
+</head>
+ 
+
+<body>
+ 
+    <form action="">
+        <h2>WiFi Config</h2>
+        <input id="wifi" type="text" placeholder="WiFi 名称(最大字符32)">
+        <input id="code" type="text" placeholder="WiFi 密码(最大字符32)">
+        <button id="set_wifi" type="button" onclick="send_wifi()">设置</button>
+        <button id="back" type="button" onclick="send_back()">回退</button>
+    </form>
+ 
+</body>
+ 
+
+<script>
+function setpath() {
+    var default_path = document.getElementById("newfile").files[0].name;
+    document.getElementById("filepath").value = default_path;
+}
+ 
+function send_wifi() {
+    var input_ssid = document.getElementById("wifi").value;
+    var input_code = document.getElementById("code").value;
+    var xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "/wifi_data", true);
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                    alert("WiFi Config success!")
+                    console.log(xhttp.responseText);
+                    location.reload()
+                } else if (xhttp.status == 0) {
+                    alert("Config fail!");
+                    location.reload()
+                    return
+                } else {
+                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                    location.reload()
+                    return
+                }
+            }
+        };
+    var data = {
+        "wifi_name":input_ssid,
+        "wifi_code":input_code
+    }
+
+    xhttp.send(JSON.stringify(data));
+}
+ 
+ 
+function send_back() {
+    var xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "/back", true);
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                    alert("Back success!")
+                    console.log(xhttp.responseText);
+                    location.reload()
+                } else if (xhttp.status == 0) {
+                    alert("Config fail!");
+                    location.reload()
+                } else {
+                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                    location.reload()
+                }
+            }
+        };
+    var data = {
+        "back":"back",
+    }
+    xhttp.send(JSON.stringify(data));
+}
+ 
+</script>
