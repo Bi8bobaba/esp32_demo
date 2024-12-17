@@ -11,6 +11,8 @@
         "esp_event.h": "c",
         "opt.h": "c",
         "cjson.h": "c",
-        "numbers": "c"
+        "numbers": "c",
+        "ap_http_server.h": "c",
+        "task.h": "c"
     }
 }

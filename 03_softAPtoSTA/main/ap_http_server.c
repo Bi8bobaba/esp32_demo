@@ -26,7 +26,7 @@
 extern const char upload_script_start[] asm("_binary_wifi_html_start"); //wifi.html文件头
 extern const char upload_script_end[]   asm("_binary_wifi_html_end");   //wifi.html文件尾
 
-config_wifiTPDF config_wifi;
+config_wifiTPDF config_wifi = {0};
 
 static const char *HTTP_TAG = "http_STA";
 
