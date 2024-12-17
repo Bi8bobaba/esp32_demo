@@ -22,13 +22,60 @@
 #define WIFI_AP_CHANNEL     1
 #define WIFI_MAX_STA_CONN   4
 
+enum{
+    WIFICFG_NONE = 0X00,
+    WIFICFG_SSID = 0X01,
+    WIFICFG_PSWD = 0X02,
+};
+
+/* 定义一个NVS操作句柄 */
+static nvs_handle wificonfig_HandleNvs;
+//sta model configuration
+static wifi_config_t wifi_staconfig;        
 /* esp netif object representing the WIFI station */
 static esp_netif_t *sta_netif = NULL;
 
+static const char *TAG = "Init_info";
 static const char *AP_TAG = "AP_info";
 static const char *STA_TAG = "STA_info";
 
 static void wifi_apinit(void);
+
+static void wificfgnvssave(void)
+{
+    esp_err_t ert;
+
+    /* 打开一个NVS命名空间 */
+    ert = nvs_open("WiFi_cfg", NVS_READWRITE, &wificonfig_HandleNvs);
+    if (ert != ESP_OK) 
+    {
+        ESP_LOGI(TAG,"Error (%s) opening wifi cfg NVS handle!\n", esp_err_to_name(ert));
+    }
+    else 
+    {
+        ert = nvs_set_str(wificonfig_HandleNvs,"wifi_ssid",config_wifi.config_wifi_name);
+        if(ert == ESP_OK)
+        {
+            ESP_LOGI(TAG,"wifi_ssid get ok \n");
+        }
+        else 
+        {
+            ESP_LOGI(TAG,"wifi_ssid get err \n");
+        }
+        ert = nvs_set_str(wificonfig_HandleNvs,"wifi_password",config_wifi.config_wifi_password);
+        if(ert == ESP_OK)
+        {
+            ESP_LOGI(TAG,"wifi_passwd get ok \n");
+        }
+        else 
+        {
+            ESP_LOGI(TAG,"wifi_passwd get err \n");
+        }
+        /* 提交*/
+        ert = nvs_commit(wificonfig_HandleNvs);
+    }
+    nvs_close(wificonfig_HandleNvs);//关闭nvs
+}
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
@@ -42,6 +89,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(STA_TAG, "sta_start is %d",ret);
             break;
         case WIFI_EVENT_STA_CONNECTED:
+            wificfgnvssave();
             ESP_LOGI(STA_TAG, "connected");
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
@@ -116,11 +164,8 @@ static void wifi_apinit(void)
              WIFI_AP_SSID, WIFI_AP_PASS, WIFI_AP_CHANNEL);
 }
 
-wifi_config_t wifi_staconfig;        //sta model configuration
-
 static void wifi_stainit(void)
 {
-    
     ESP_LOGI(STA_TAG, "wifi_sta_init");
     memcpy(wifi_staconfig.sta.ssid,(uint8_t*)config_wifi.config_wifi_name,sizeof(wifi_staconfig.sta.ssid));
     memcpy(wifi_staconfig.sta.password,(uint8_t*)config_wifi.config_wifi_password,sizeof(wifi_staconfig.sta.password));
@@ -133,6 +178,10 @@ static void wifi_stainit(void)
 
 void wifi_init(void)
 {
+    size_t len;
+    esp_err_t ert;
+    uint16_t wifinvscfg = WIFICFG_NONE;
+
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -148,7 +197,52 @@ void wifi_init(void)
     ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );  //wifi配置存储介质选择
 
-    wifi_apinit();
+    /* 打开一个NVS命名空间 */
+    ert = nvs_open("WiFi_cfg", NVS_READWRITE, &wificonfig_HandleNvs);
+    if (ert != ESP_OK) 
+    {
+        ESP_LOGI(TAG,"Error (%s) opening wifi cfg NVS handle!\n", esp_err_to_name(ert));
+        wifinvscfg = WIFICFG_NONE;
+    }
+    else 
+    {
+        len = sizeof(config_wifi.config_wifi_name);
+        ert = nvs_get_str(wificonfig_HandleNvs,"wifi_ssid",config_wifi.config_wifi_name,&len);
+        if(ert == ESP_OK)
+        {
+            wifinvscfg |= WIFICFG_SSID;        //读取到SSID
+            ESP_LOGI(TAG,"wifi_ssid get ok :%s  \n",config_wifi.config_wifi_name);
+        }
+        else 
+        {
+            wifinvscfg = WIFICFG_NONE;
+            ESP_LOGI(TAG,"wifi_ssid get err \n");
+        }
+        len = sizeof(config_wifi.config_wifi_password);
+        ert = nvs_get_str(wificonfig_HandleNvs,"wifi_password",config_wifi.config_wifi_password,&len);
+        if(ert == ESP_OK)
+        {
+            wifinvscfg |= WIFICFG_PSWD;        //读取到password
+            ESP_LOGI(TAG,"wifi_passwd get ok : %s \n",config_wifi.config_wifi_password);
+        }
+        else 
+        {
+            wifinvscfg = WIFICFG_NONE;
+            ESP_LOGI(TAG,"wifi_passwd get err \n");
+        }
+        /* 提交*/
+        ert = nvs_commit(wificonfig_HandleNvs);
+    }
+    nvs_close(wificonfig_HandleNvs);//关闭nvs
+
+    if(wifinvscfg & (WIFICFG_SSID | WIFICFG_PSWD))
+    {
+        wifi_stainit();
+    }
+    else
+    {
+        wifi_apinit();
+    }
 }
 
 
