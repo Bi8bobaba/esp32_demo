@@ -1,0 +1,18 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPathWin": "e:\\idf\\v5.3.2\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.portWin": "COM19",
+    "idf.toolsPathWin": "e:\\idf\\.espressif",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "esp_event.h": "c",
+        "opt.h": "c",
+        "cjson.h": "c",
+        "numbers": "c",
+        "ap_http_server.h": "c",
+        "task.h": "c"
+    }
+}
