@@ -275,9 +275,9 @@ void wifi_task(void *pvParameters)
             config_wifi.config_useable = CONFIG_NOK;   //·ÀÖ¹ÖØ¸´ÅäÍø
         }
         cloudnum ++;
-        if(cloudnum > 15)
+        if(cloudnum > 25)
         {
-            mqtt_event_process();
+            mqtt_updata_process();
             cloudnum = 0;
         }
     }
