@@ -13,6 +13,12 @@
         "cjson.h": "c",
         "numbers": "c",
         "ap_http_server.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "mqtt_client.h": "c",
+        "sockets.h": "c",
+        "esp_system.h": "c",
+        "mqtt_process.h": "c",
+        "dns.h": "c",
+        "esp_log.h": "c"
     }
 }

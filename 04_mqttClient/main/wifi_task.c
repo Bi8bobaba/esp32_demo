@@ -7,6 +7,7 @@
 #include "nvs_flash.h"
 #include "ap_http_server.h"
 #include "wifi_task.h"
+#include "mqtt_process.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -40,7 +41,9 @@ static const char *AP_TAG = "AP_info";
 static const char *STA_TAG = "STA_info";
 
 static void wifi_apinit(void);
+static void wifi_stainit(void);
 
+/*wifi 连接配置保存*/
 static void wificfgnvssave(void)
 {
     esp_err_t ert;
@@ -56,20 +59,20 @@ static void wificfgnvssave(void)
         ert = nvs_set_str(wificonfig_HandleNvs,"wifi_ssid",config_wifi.config_wifi_name);
         if(ert == ESP_OK)
         {
-            ESP_LOGI(TAG,"wifi_ssid get ok \n");
+            ESP_LOGI(TAG,"wifi_ssid save ok \n");
         }
         else 
         {
-            ESP_LOGI(TAG,"wifi_ssid get err \n");
+            ESP_LOGI(TAG,"wifi_ssid save err \n");
         }
         ert = nvs_set_str(wificonfig_HandleNvs,"wifi_password",config_wifi.config_wifi_password);
         if(ert == ESP_OK)
         {
-            ESP_LOGI(TAG,"wifi_passwd get ok \n");
+            ESP_LOGI(TAG,"wifi_passwd save ok \n");
         }
         else 
         {
-            ESP_LOGI(TAG,"wifi_passwd get err \n");
+            ESP_LOGI(TAG,"wifi_passwd save err \n");
         }
         /* 提交*/
         ert = nvs_commit(wificonfig_HandleNvs);
@@ -77,9 +80,11 @@ static void wificfgnvssave(void)
     nvs_close(wificonfig_HandleNvs);//关闭nvs
 }
 
+/*wifi事件回调*/
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
 {
+    static uint8_t staRecnt = 2;
     if (event_base == WIFI_EVENT)
     {
         switch (event_id)
@@ -89,13 +94,23 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(STA_TAG, "sta_start is %d",ret);
             break;
         case WIFI_EVENT_STA_CONNECTED:
-            wificfgnvssave();
+            mqtt_app_start();
+            staRecnt = 2;
             ESP_LOGI(STA_TAG, "connected");
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
             ESP_LOGI(STA_TAG, "disconnected");
-            esp_wifi_stop();
-            wifi_apinit();  //sta模式切换失败，重新打开ap模式
+            if(staRecnt)    //失败重连两次
+            {
+                staRecnt--;
+                wifi_stainit();
+                esp_wifi_connect();
+            }
+            else
+            {
+                esp_wifi_stop();
+                wifi_apinit();  //sta模式切换失败，重新打开ap模式
+            }
             break;
         case WIFI_EVENT_AP_STACONNECTED:
         {
@@ -132,6 +147,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+/*wifi ap模式*/
 static void wifi_apinit(void)
 {
     wifi_config_t wifi_config = {
@@ -195,7 +211,7 @@ void wifi_init(void)
 
     ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL) );
     ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );  //wifi配置存储介质选择
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_FLASH) );  //wifi配置存储介质选择
 
     /* 打开一个NVS命名空间 */
     ert = nvs_open("WiFi_cfg", NVS_READWRITE, &wificonfig_HandleNvs);
@@ -245,17 +261,24 @@ void wifi_init(void)
     }
 }
 
-
 void wifi_task(void *pvParameters)
 {
+    static uint16_t cloudnum = 0;
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
 
         if(config_wifi.config_useable == CONFIG_OK)
         {
+            wificfgnvssave();           //发送就保存，和手机一样
             wifi_stainit();
             config_wifi.config_useable = CONFIG_NOK;   //防止重复配网
+        }
+        cloudnum ++;
+        if(cloudnum > 15)
+        {
+            mqtt_event_process();
+            cloudnum = 0;
         }
     }
 }
